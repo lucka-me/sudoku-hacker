@@ -13,6 +13,7 @@ A sudoku solver for learning C language, without any practical value.
 ✓  | 读取用户指定文件中的数独问题
 ✓  | 检查数独的合法性
 ✓  | 用剔除法解数独
+✓  | 搜索空格在行列及宫格中的唯一解
 
 ### 剔除法无法解完数独的情况下……
 
