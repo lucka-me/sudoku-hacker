@@ -12,10 +12,12 @@
 
 int isIllegal (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10]);
 void PrintSudoku (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10]);
+int cntBlank (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10]);
 
 int Exclude (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10]);
 void SearchOnlySolution (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10], int x, int y);
-void Exhaustion (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10], int isFinished[LEN_SUDOKU][LEN_SUDOKU], int begin_x, int begin_y);
+void Exhaustion (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10]);
+void Carry (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10], int isFinished[LEN_SUDOKU][LEN_SUDOKU], int begin_x, int begin_y);
 
 int main(int argc, const char * argv[]) {
     /* 读取数独问题文件 */
@@ -68,20 +70,19 @@ int main(int argc, const char * argv[]) {
     
     /* 解数独 */
     /* 剔除法 */
-    // 确定完成情况
-    int cntBlank = 0;
+    // 输出完成情况
+    printf("> %d blank(s) founded.\n", cntBlank(sudoku));
+    
+    // 初始化候选数表
     for (int x = 0; x < LEN_SUDOKU; x++) {
         for (int y = 0; y < LEN_SUDOKU; y++) {
             if (sudoku[x][y][0]) continue;
-            cntBlank++;
             
-            // 初始化候选数表
             for (int num = 1; num < 10; num++) {
                 sudoku[x][y][num] = 1;
             }
         }
     }
-    printf("> %d blank(s) founded.\n", cntBlank);
     
     // 剔除
     printf("> Searching the only solutions...\n");
@@ -106,34 +107,9 @@ int main(int argc, const char * argv[]) {
         PrintSudoku(sudoku);
         
         /* 穷举法 */
-        // 搜索穷举起始位置
-        int isBeginFound = 0;
-        int begin_x = 0;
-        int begin_y = 0;
-        
-        // 确定完成情况
-        int isFinished[LEN_SUDOKU][LEN_SUDOKU] = {0};
-        cntBlank = 0;
-        for (int x = 0; x < LEN_SUDOKU; x++) {
-            for (int y = 0; y < LEN_SUDOKU; y++) {
-                if (sudoku[x][y][0]) {
-                    isFinished[x][y] = 1;
-                    continue;
-                }
-                cntBlank++;
-                sudoku[x][y][0] = 1;
-                if (!isBeginFound) {
-                    begin_x = x;
-                    begin_y = y;
-                    isBeginFound = 1;
-                }
-            }
-        }
-        sudoku[begin_x][begin_y][0] = 0;
-        
-        /* 当空大于12个时提示用户将会非常耗时 */
-        printf("> %d blank(s) founded.\n", cntBlank);
-        if (cntBlank > 12) {
+        // 当空大于12个时提示用户将会非常耗时
+        printf("> %d blank(s) founded.\n", cntBlank(sudoku));
+        if (cntBlank(sudoku) > 12) {
             printf("> Too many blanks, it may spend much time.\n");
             printf("> If you want to continue, enter Y please.\n");
             printf("> ");
@@ -145,7 +121,7 @@ int main(int argc, const char * argv[]) {
         
         // 穷举
         printf("> Searching one by one...\n");
-        Exhaustion(sudoku, isFinished, begin_x, begin_y);
+        Exhaustion(sudoku);
     }
     
     /* 输出结果 */
@@ -214,6 +190,19 @@ int isIllegal (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10]) {
         }
     }
     return 0;
+}
+
+// 检查完成情况
+int cntBlank (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10]) {
+    int cnt = 0;
+    for (int x = 0; x < LEN_SUDOKU; x++) {
+        for (int y = 0; y < LEN_SUDOKU; y++) {
+            if (sudoku[x][y][0]) continue;
+            
+            cnt++;
+        }
+    }
+    return cnt;
 }
 
 // 输出数独
@@ -345,29 +334,74 @@ void SearchOnlySolution (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10], int x, int y) {
 }
 
 // 穷举
-void Exhaustion (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10], int isFinished[LEN_SUDOKU][LEN_SUDOKU], int begin_x, int begin_y) {
-    do {
-        // 横着遍历
-        sudoku[begin_x][begin_y][0]++;
-        
-        // 进位
-        int isCarry = 0;
-        for (int x = begin_x; x < LEN_SUDOKU; x++) {
-            for (int y = 0; y < LEN_SUDOKU; y++) {
-                if (isFinished[x][y]) continue;
-                
-                if (isCarry) {
-                    do {
-                        sudoku[x][y][0]++;
-                    } while (!sudoku[x][y][sudoku[x][y][0]] && sudoku[x][y][0] < 10);
-                }
-                if (sudoku[x][y][0] == 10) {
-                    sudoku[x][y][0] = 1;
-                    isCarry = 1;
-                } else {
-                    isCarry = 0;
+void Exhaustion (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10]) {
+    // 初始化空格
+    int isFinished[LEN_SUDOKU][LEN_SUDOKU] = {0};
+    for (int x = 0; x < LEN_SUDOKU; x++) {
+        for (int y = 0; y < LEN_SUDOKU; y++) {
+            if (sudoku[x][y][0]) {
+                isFinished[x][y] = 1;
+                continue;
+            }
+            for (int num = 1; num < 10; num++) {
+                if (sudoku[x][y][num]) {
+                    sudoku[x][y][0] = num;
+                    break;
                 }
             }
         }
+    }
+    
+    // 搜索穷举起始位置
+    int isBeginFound = 0;
+    int begin_x = 0;
+    int begin_y = 0;
+    for (int x = 0; x < LEN_SUDOKU; x++) {
+        for (int y = 0; y < LEN_SUDOKU; y++) {
+            if (!isFinished[x][y]) {
+                begin_x = x;
+                begin_y = y;
+                isBeginFound = 1;
+                break;
+            }
+        }
+        if (isBeginFound) break;
+    }
+    // 初始化穷举起始位置
+    for (int num = 1; num < 10; num++) {
+        if (sudoku[begin_x][begin_y][num]) {
+            sudoku[begin_x][begin_y][0] = num - 1;
+            break;
+        }
+    }
+    
+    do {
+        Carry(sudoku, isFinished, begin_x, begin_y);
     } while (isIllegal(sudoku));
+}
+
+// 数组进位法
+void Carry (int sudoku[LEN_SUDOKU][LEN_SUDOKU][10], int isFinished[LEN_SUDOKU][LEN_SUDOKU], int begin_x, int begin_y) {
+    // 横着遍历
+    sudoku[begin_x][begin_y][0]++;
+    
+    // 进位
+    int isCarry = 0;
+    for (int x = begin_x; x < LEN_SUDOKU; x++) {
+        for (int y = 0; y < LEN_SUDOKU; y++) {
+            if (isFinished[x][y]) continue;
+            
+            if (isCarry) {
+                do {
+                    sudoku[x][y][0]++;
+                } while (!sudoku[x][y][sudoku[x][y][0]] && sudoku[x][y][0] < 10);
+            }
+            if (sudoku[x][y][0] == 10) {
+                sudoku[x][y][0] = 1;
+                isCarry = 1;
+            } else {
+                isCarry = 0;
+            }
+        }
+    }
 }
